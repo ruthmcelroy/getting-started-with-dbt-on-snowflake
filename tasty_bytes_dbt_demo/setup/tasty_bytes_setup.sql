@@ -24,11 +24,14 @@ USE ROLE ACCOUNTADMIN;
 -- STEP 1: Create a warehouse for executing workspace actions
 -- A dedicated warehouse assigned to your workspace helps you log, trace,
 -- and identify actions initiated from within that workspace.
--- The Tasty Bytes data model is fairly large, so an XL warehouse is recommended.
+-- The Tasty Bytes data model is fairly large, so an XL warehouse is recommended
+-- for this one-time setup. Warehouses bill for the time they are running,
+-- including idle time before auto-suspend, so this warehouse auto-suspends after
+-- 60 seconds and is resized to SMALL at the end of this script.
 -- Alternatively, you can use an existing warehouse in your account.
 -- =============================================================================
 
-CREATE WAREHOUSE tasty_bytes_dbt_wh WAREHOUSE_SIZE = XLARGE;
+CREATE WAREHOUSE tasty_bytes_dbt_wh WAREHOUSE_SIZE = XLARGE AUTO_SUSPEND = 60;
 
 -- =============================================================================
 -- STEP 2: Create a database and schemas for integrations and model materializations
@@ -307,6 +310,13 @@ FROM @tasty_bytes_dbt_db.public.s3load/raw_pos/order_header/;
 -- order_detail table load
 COPY INTO tasty_bytes_dbt_db.raw.order_detail
 FROM @tasty_bytes_dbt_db.public.s3load/raw_pos/order_detail/;
+
+-- =============================================================================
+-- Resize the warehouse now that the source data is built
+-- SMALL is sufficient for compiling, running, and scheduling the dbt project.
+-- =============================================================================
+
+ALTER WAREHOUSE tasty_bytes_dbt_wh SET WAREHOUSE_SIZE = SMALL;
 
 -- =============================================================================
 -- Setup complete
